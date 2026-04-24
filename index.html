@@ -20,16 +20,17 @@
   }
   canvas{
     width:100vw;
-    height:100vh;
+    height:100dvh;
     image-rendering:pixelated;
     background:#8bd66f;
+    display:block;
   }
   #muteBtn{
     position:fixed;
-    left:18px;
-    bottom:24px;
-    width:132px;
-    height:52px;
+    left:16px;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    width:122px;
+    height:48px;
     border-radius:16px;
     border:3px solid #333;
     background:rgba(255,255,255,.9);
@@ -40,15 +41,15 @@
   }
   #jumpBtn{
     position:fixed;
-    right:22px;
-    bottom:24px;
-    width:112px;
-    height:112px;
+    right:18px;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    width:104px;
+    height:104px;
     border-radius:50%;
     border:4px solid #d45b94;
     background:rgba(255,211,232,.9);
     font-weight:900;
-    font-size:18px;
+    font-size:17px;
     box-shadow:0 8px 16px rgba(0,0,0,.22);
     display:flex;
     align-items:center;
@@ -99,8 +100,8 @@ const motivationalPhrases = [
   "¡Lola está feliz contigo Kylie!"
 ];
 
-const groundY = 405;
-const gravity = 0.62;
+const groundY = 390;
+const gravity = 0.50;
 
 let lola;
 let obstacles = [];
@@ -340,7 +341,7 @@ function jump(){
   if(state === "gameover" || state === "win"){ resetGame(); return; }
   if(!lola.jumping){
     lola.jumping = true;
-    lola.vy = -17;
+    lola.vy = -18.5;
     beep(650,.05);
   }
 }
@@ -352,7 +353,7 @@ function spawnThings(){
     const type = Math.random() > .45 ? "rock" : "cactus";
     obstacles.push({
       x:W+50,
-      y:type==="rock" ? groundY-36 : groundY-58,
+      y:type==="rock" ? groundY-34 : groundY-54,
       w:type==="rock" ? 40 : 34,
       h:type==="rock" ? 34 : 56,
       type
@@ -744,46 +745,56 @@ function drawHUD(){
   const prevTarget = level === 1 ? 0 : levelData[level-2].targetScore;
   const progress = Math.min(1, (score - prevTarget) / (cfg.targetScore - prevTarget));
 
-  // Panel superior limpio
-  ctx.fillStyle="rgba(255,255,255,.92)";
-  ctx.fillRect(14,14,W-28,86);
+  // Panel móvil compacto
+  const panelX = 14;
+  const panelY = 14;
+  const panelW = W - 28;
+  const panelH = 112;
+
+  ctx.fillStyle="rgba(255,255,255,.93)";
+  ctx.fillRect(panelX,panelY,panelW,panelH);
   ctx.strokeStyle="#2b5f2b";
   ctx.lineWidth=3;
-  ctx.strokeRect(14,14,W-28,86);
+  ctx.strokeRect(panelX,panelY,panelW,panelH);
 
   ctx.fillStyle="#222";
-  ctx.font="bold 20px monospace";
-  ctx.fillText("🐔 Lola corre sola",32,42);
-  ctx.fillText("Nivel "+level,300,42);
-  ctx.fillText("Puntos: "+score,430,42);
-  ctx.fillText("Vidas: "+"❤".repeat(lives),620,42);
+  ctx.font="bold 18px monospace";
+  ctx.fillText("🐔 Lola",30,42);
+  ctx.fillText("Nivel "+level,170,42);
+  ctx.fillText("Pts: "+score,300,42);
+  ctx.fillText("❤ "+lives,430,42);
 
-  ctx.font="16px monospace";
-  ctx.fillText("Premios: ⭐=5 ❤️=3 🌽=1 | Evita enemigos. Dorada los vence +2",32,72);
+  ctx.font="bold 15px monospace";
+  ctx.fillText("⭐ 5 pts   ❤️ 3 pts   🌽 1 pt   🥚 dorada",30,70);
 
-  // Barra de avance por puntos
-  const barX = W-295;
-  const barY = 63;
-  const barW = 250;
-  ctx.fillStyle="#ddd";
-  ctx.fillRect(barX,barY,barW,14);
-  ctx.fillStyle="#55c85a";
-  ctx.fillRect(barX,barY,barW*progress,14);
-  ctx.strokeStyle="#222";
-  ctx.lineWidth=2;
-  ctx.strokeRect(barX,barY,barW,14);
+  ctx.font="13px monospace";
+  ctx.fillText("Evita enemigos. Si Lola es dorada, los vence +2.",30,94);
+
+  // Barra abajo del panel
+  const barX = 620;
+  const barY = 45;
+  const barW = 285;
+  const barH = 18;
 
   ctx.fillStyle="#222";
   ctx.font="bold 14px monospace";
-  ctx.fillText("Meta: "+cfg.targetScore+" pts",barX+55,58);
+  ctx.fillText("Meta: "+cfg.targetScore,barX,36);
+
+  ctx.fillStyle="#ddd";
+  ctx.fillRect(barX,barY,barW,barH);
+  ctx.fillStyle="#55c85a";
+  ctx.fillRect(barX,barY,barW*progress,barH);
+  ctx.strokeStyle="#222";
+  ctx.lineWidth=2;
+  ctx.strokeRect(barX,barY,barW,barH);
 
   if(messageTimer>0){
-    ctx.fillStyle="rgba(0,0,0,.58)";
-    ctx.fillRect(W/2-310,120,620,58);
+    ctx.fillStyle="rgba(0,0,0,.62)";
+    ctx.fillRect(W/2-320,142,640,54);
     ctx.fillStyle="#fff";
     ctx.textAlign="center";
-    ctx.font="bold 26px monospace";
-    ctx.fillText(message,W/2,158);
+    ctx.font="bold 24px monospace";
+    ctx.fillText(message,W/2,177);
     ctx.textAlign="left";
   }
 }
@@ -817,7 +828,7 @@ function drawMenu(){
   ctx.fillText("JUGAR",W/2,H-98);
 
   ctx.font="18px monospace";
-  ctx.fillText("PC: espacio | Teléfono: botón SALTAR",W/2,H-32);
+  ctx.fillText("Mantén el ritmo: el salto ahora dura más.",W/2,H-32);
   ctx.textAlign="left";
 }
 
