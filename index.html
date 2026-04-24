@@ -29,7 +29,7 @@
     position:fixed;
     left:16px;
     bottom:calc(18px + env(safe-area-inset-bottom));
-    width:122px;
+    width:112px;
     height:48px;
     border-radius:16px;
     border:3px solid #333;
@@ -41,10 +41,10 @@
   }
   #jumpBtn{
     position:fixed;
-    right:18px;
+    right:16px;
     bottom:calc(16px + env(safe-area-inset-bottom));
-    width:104px;
-    height:104px;
+    width:96px;
+    height:96px;
     border-radius:50%;
     border:4px solid #d45b94;
     background:rgba(255,211,232,.9);
@@ -64,7 +64,7 @@
 </head>
 <body>
 <div id="gameWrap">
-  <canvas id="game" width="960" height="540"></canvas>
+  <canvas id="game" width="480" height="800"></canvas>
 </div>
 <button id="muteBtn">🔊 Música</button>
 <div id="jumpBtn">SALTAR</div>
@@ -100,7 +100,7 @@ const motivationalPhrases = [
   "¡Lola está feliz contigo Kylie!"
 ];
 
-const groundY = 390;
+const groundY = 610;
 const gravity = 0.50;
 
 let lola;
@@ -119,7 +119,7 @@ const levelData = [
 
 function resetLola(){
   lola = {
-    x:120,
+    x:70,
     y:groundY-76,
     w:70,
     h:70,
@@ -364,8 +364,8 @@ function spawnThings(){
     const t = ["corn","star","heart"][Math.floor(Math.random()*3)];
     const high = Math.random()>.5;
     prizes.push({
-      x:W+60,
-      y:high ? groundY-150-rand(0,35) : groundY-95,
+      x:W+50,
+      y:high ? groundY-180-rand(0,30) : groundY-105,
       w:34,
       h:34,
       type:t,
@@ -397,7 +397,7 @@ function update(){
 // generar huevo dorado ocasional
 if(frame % 500 === 0){
   prizes.push({
-    x:W+60,
+    x:W+50,
     y:groundY-120,
     w:40,
     h:40,
@@ -411,7 +411,7 @@ if(frame % 500 === 0){
 const enemyRate = Math.max(190, 430 - level * 55);
 if(frame % enemyRate === 0){
   enemies.push({
-    x:W+70,
+    x:W+55,
     y:groundY-54,
     w:46,
     h:44,
@@ -745,56 +745,46 @@ function drawHUD(){
   const prevTarget = level === 1 ? 0 : levelData[level-2].targetScore;
   const progress = Math.min(1, (score - prevTarget) / (cfg.targetScore - prevTarget));
 
-  // Panel móvil compacto
-  const panelX = 14;
-  const panelY = 14;
-  const panelW = W - 28;
-  const panelH = 112;
-
-  ctx.fillStyle="rgba(255,255,255,.93)";
-  ctx.fillRect(panelX,panelY,panelW,panelH);
+  // Panel superior especial iPhone vertical
+  ctx.fillStyle="rgba(255,255,255,.94)";
+  ctx.fillRect(10,18,W-20,124);
   ctx.strokeStyle="#2b5f2b";
   ctx.lineWidth=3;
-  ctx.strokeRect(panelX,panelY,panelW,panelH);
+  ctx.strokeRect(10,18,W-20,124);
 
   ctx.fillStyle="#222";
-  ctx.font="bold 18px monospace";
-  ctx.fillText("🐔 Lola",30,42);
-  ctx.fillText("Nivel "+level,170,42);
-  ctx.fillText("Pts: "+score,300,42);
-  ctx.fillText("❤ "+lives,430,42);
+  ctx.font="bold 17px monospace";
+  ctx.fillText("🐔 Lola",24,48);
+  ctx.fillText("Nivel "+level,150,48);
+  ctx.fillText("Pts: "+score,260,48);
+  ctx.fillText("❤ "+lives,380,48);
 
-  ctx.font="bold 15px monospace";
-  ctx.fillText("⭐ 5 pts   ❤️ 3 pts   🌽 1 pt   🥚 dorada",30,70);
-
-  ctx.font="13px monospace";
-  ctx.fillText("Evita enemigos. Si Lola es dorada, los vence +2.",30,94);
-
-  // Barra abajo del panel
-  const barX = 620;
-  const barY = 45;
-  const barW = 285;
-  const barH = 18;
-
-  ctx.fillStyle="#222";
   ctx.font="bold 14px monospace";
-  ctx.fillText("Meta: "+cfg.targetScore,barX,36);
+  ctx.fillText("⭐=5   ❤️=3   🌽=1   🥚=invencible",24,76);
+
+  ctx.font="12px monospace";
+  ctx.fillText("Evita enemigos. Dorada los vence +2.",24,100);
+
+  // Barra de avance
+  ctx.fillStyle="#222";
+  ctx.font="bold 12px monospace";
+  ctx.fillText("Meta: "+cfg.targetScore+" pts",24,124);
 
   ctx.fillStyle="#ddd";
-  ctx.fillRect(barX,barY,barW,barH);
+  ctx.fillRect(150,112,290,16);
   ctx.fillStyle="#55c85a";
-  ctx.fillRect(barX,barY,barW*progress,barH);
+  ctx.fillRect(150,112,290*progress,16);
   ctx.strokeStyle="#222";
   ctx.lineWidth=2;
-  ctx.strokeRect(barX,barY,barW,barH);
+  ctx.strokeRect(150,112,290,16);
 
   if(messageTimer>0){
     ctx.fillStyle="rgba(0,0,0,.62)";
-    ctx.fillRect(W/2-320,142,640,54);
+    ctx.fillRect(24,160,W-48,62);
     ctx.fillStyle="#fff";
     ctx.textAlign="center";
-    ctx.font="bold 24px monospace";
-    ctx.fillText(message,W/2,177);
+    ctx.font="bold 18px monospace";
+    ctx.fillText(message,W/2,198);
     ctx.textAlign="left";
   }
 }
@@ -802,33 +792,42 @@ function drawHUD(){
 function drawMenu(){
   ctx.fillStyle="#91e7ff";
   ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle="#57b85c";
+  ctx.beginPath();
+  ctx.ellipse(110,520,180,130,0,0,Math.PI*2);
+  ctx.ellipse(340,535,190,140,0,0,Math.PI*2);
+  ctx.fill();
+
   ctx.fillStyle="#75cf5b";
   ctx.fillRect(0,groundY,W,H-groundY);
-  ctx.fillStyle="#d9b879";
-  ctx.fillRect(0,groundY+45,W,78);
 
-  drawPixelChicken(W/2-95,240,8,frame);
+  ctx.fillStyle="#d9b879";
+  ctx.fillRect(0,groundY+52,W,88);
+
+  drawPixelChicken(W/2-72,300,7,frame);
 
   ctx.fillStyle="#222";
   ctx.textAlign="center";
-  ctx.font="bold 42px monospace";
-  ctx.fillText("Kylie y la Gallinita Lola",W/2,92);
+  ctx.font="bold 26px monospace";
+  ctx.fillText("Kylie y Lola",W/2,94);
 
-  ctx.font="22px monospace";
-  ctx.fillText("Lola corre sola. Junta premios, gana puntos y pasa de nivel.",W/2,132);
+  ctx.font="16px monospace";
+  ctx.fillText("Junta premios y pasa niveles",W/2,126);
+  ctx.fillText("Diseñado para iPhone vertical",W/2,150);
 
   ctx.fillStyle="#fff7b2";
-  ctx.fillRect(W/2-150,H-145,300,72);
+  ctx.fillRect(W/2-120,620,240,68);
   ctx.strokeStyle="#222";
   ctx.lineWidth=4;
-  ctx.strokeRect(W/2-150,H-145,300,72);
+  ctx.strokeRect(W/2-120,620,240,68);
 
   ctx.fillStyle="#222";
-  ctx.font="bold 30px monospace";
-  ctx.fillText("JUGAR",W/2,H-98);
+  ctx.font="bold 28px monospace";
+  ctx.fillText("JUGAR",W/2,664);
 
-  ctx.font="18px monospace";
-  ctx.fillText("Mantén el ritmo: el salto ahora dura más.",W/2,H-32);
+  ctx.font="14px monospace";
+  ctx.fillText("Botón SALTAR para jugar",W/2,735);
   ctx.textAlign="left";
 }
 
@@ -839,20 +838,21 @@ function drawEnd(title, subtitle){
 
   ctx.textAlign="center";
   ctx.fillStyle="#fff";
-  ctx.font="bold 48px monospace";
-  ctx.fillText(title,W/2,H/2-60);
-  ctx.font="24px monospace";
-  ctx.fillText(subtitle,W/2,H/2-10);
+  ctx.font="bold 34px monospace";
+  ctx.fillText(title,W/2,H/2-70);
+
+  ctx.font="18px monospace";
+  ctx.fillText(subtitle,W/2,H/2-28);
 
   ctx.fillStyle="#fff7b2";
-  ctx.fillRect(W/2-170,H/2+40,340,72);
+  ctx.fillRect(W/2-150,H/2+25,300,72);
   ctx.strokeStyle="#222";
   ctx.lineWidth=4;
-  ctx.strokeRect(W/2-170,H/2+40,340,72);
+  ctx.strokeRect(W/2-150,H/2+25,300,72);
 
   ctx.fillStyle="#222";
-  ctx.font="bold 28px monospace";
-  ctx.fillText("JUGAR DE NUEVO",W/2,H/2+87);
+  ctx.font="bold 22px monospace";
+  ctx.fillText("JUGAR DE NUEVO",W/2,H/2+70);
   ctx.textAlign="left";
 }
 
