@@ -92,10 +92,16 @@ let floatingTexts = [];
 let lola, obstacles, prizes, enemies, clouds, hills, flowers;
 
 const levelData = [
-  {name:"Pradera Dulce", bg:"#91e7ff", grass:"#75cf5b", hill:"#57b85c", speed:2.1, targetScore:25, obstacleRate:175, prizeRate:72},
-  {name:"Granja de Maíz", bg:"#a7ecff", grass:"#7fd25c", hill:"#69bd4d", speed:2.35, targetScore:55, obstacleRate:160, prizeRate:68},
-  {name:"Bosque Estrella", bg:"#9bd6ff", grass:"#61c76a", hill:"#3fa56a", speed:2.60, targetScore:90, obstacleRate:145, prizeRate:63},
-  {name:"Arcoíris Kylie", bg:"#b8e7ff", grass:"#79d98f", hill:"#7cc9ff", speed:2.90, targetScore:135, obstacleRate:130, prizeRate:58}
+  {name:"Pradera Dulce", bg:"#91e7ff", grass:"#75cf5b", hill:"#57b85c", speed:2.05, targetScore:25, obstacleRate:185, prizeRate:72},
+  {name:"Granja de Maíz", bg:"#a7ecff", grass:"#7fd25c", hill:"#69bd4d", speed:2.25, targetScore:55, obstacleRate:172, prizeRate:68},
+  {name:"Bosque Estrella", bg:"#9bd6ff", grass:"#61c76a", hill:"#3fa56a", speed:2.45, targetScore:90, obstacleRate:160, prizeRate:64},
+  {name:"Río Brillante", bg:"#87dfff", grass:"#6fd98d", hill:"#52b6d8", speed:2.65, targetScore:130, obstacleRate:148, prizeRate:61},
+  {name:"Montaña Algodón", bg:"#bfe9ff", grass:"#82d96b", hill:"#9bb7ff", speed:2.85, targetScore:175, obstacleRate:136, prizeRate:58},
+  {name:"Valle de Frutillas", bg:"#ffd6e8", grass:"#79d98f", hill:"#ff8db8", speed:3.05, targetScore:225, obstacleRate:126, prizeRate:55},
+  {name:"Desierto de Maicitos", bg:"#ffe6a7", grass:"#d6bf58", hill:"#d99f45", speed:3.25, targetScore:280, obstacleRate:116, prizeRate:52},
+  {name:"Noche de Luciérnagas", bg:"#3949ab", grass:"#4caf50", hill:"#283593", speed:3.45, targetScore:340, obstacleRate:106, prizeRate:49},
+  {name:"Cielo Arcoíris", bg:"#c6f6ff", grass:"#8ce99a", hill:"#d0bfff", speed:3.65, targetScore:405, obstacleRate:98, prizeRate:46},
+  {name:"Galaxia de Kylie", bg:"#17113f", grass:"#5c7cfa", hill:"#7c3aed", speed:3.85, targetScore:480, obstacleRate:90, prizeRate:43}
 ];
 
 const motivationalPhrases = [
@@ -103,14 +109,25 @@ const motivationalPhrases = [
   "¡Tú puedes Kylie!",
   "¡Vamos Kylie, sigue así!",
   "¡Eres una campeona Kylie!",
-  "¡Lola está feliz contigo Kylie!"
+  "¡Lola está feliz contigo Kylie!",
+  "¡Qué increíble salto Kylie!",
+  "¡Sigue juntando premios!",
+  "¡Cada nivel juegas mejor!",
+  "¡Kylie y Lola son imparables!",
+  "¡Llegaste muy lejos Kylie!"
 ];
 
 const levelMusic = [
   {tempo:230, melody:[523,587,659,784,659,587,523,392,440,523,587,659,587,523,440,392], bass:[131,131,196,196,174,174,196,196], beat:[1,0,0,1,0,0,1,0]},
+  {tempo:220, melody:[440,494,523,659,587,523,494,440,523,587,659,698,659,587,523,494], bass:[147,147,196,196,165,165,196,196], beat:[1,0,1,0,0,1,0,1]},
   {tempo:210, melody:[392,440,494,587,523,494,440,392,494,523,587,659,587,523,494,440], bass:[196,196,147,147,165,165,196,196], beat:[1,0,1,0,0,1,0,1]},
+  {tempo:200, melody:[587,659,698,784,698,659,587,523,659,698,784,880,784,698,659,587], bass:[147,174,196,220,196,174,147,174], beat:[1,0,0,1,1,0,1,0]},
   {tempo:190, melody:[659,784,880,784,659,587,659,784,880,988,880,784,659,587,523,587], bass:[165,165,220,220,196,196,247,247], beat:[1,1,0,1,0,1,1,0]},
-  {tempo:170, melody:[784,880,988,1046,988,880,784,659,880,988,1174,1046,988,880,784,659], bass:[196,247,220,196,262,247,220,196], beat:[1,0,1,1,0,1,0,1]}
+  {tempo:185, melody:[523,659,784,880,784,659,698,880,988,880,784,698,659,784,880,988], bass:[131,165,196,220,196,165,174,220], beat:[1,0,1,1,0,1,0,1]},
+  {tempo:180, melody:[440,523,587,659,587,523,440,392,523,587,659,784,659,587,523,440], bass:[110,147,165,196,165,147,110,147], beat:[1,1,0,0,1,0,1,0]},
+  {tempo:170, melody:[587,698,784,880,784,698,587,523,698,784,880,1046,880,784,698,587], bass:[147,174,196,220,196,174,147,174], beat:[1,0,1,0,1,1,0,1]},
+  {tempo:160, melody:[784,880,988,1046,988,880,784,659,880,988,1174,1046,988,880,784,659], bass:[196,247,220,196,262,247,220,196], beat:[1,0,1,1,0,1,0,1]},
+  {tempo:150, melody:[880,988,1174,1318,1174,988,1046,1318,1568,1318,1174,1046,988,1174,1318,1568], bass:[220,247,294,330,294,247,262,330], beat:[1,1,1,0,1,1,0,1]}
 ];
 
 const heroTheme = {
@@ -276,7 +293,7 @@ function spawnThings(){
   }
 
   // Enemigos dificultad baja escalable.
-  const enemyRate = Math.max(190, 430 - level*55);
+  const enemyRate = Math.max(135, 430 - level*32);
   if(frame % enemyRate === 0){
     enemies.push({
       x:W+55,y:groundY-54,w:46,h:44,
@@ -622,6 +639,16 @@ function drawWorld(){
   ctx.fillStyle=cfg.bg;
   ctx.fillRect(0,0,W,H);
 
+  // estrellas para niveles nocturnos / galaxia
+  if(level >= 8){
+    for(let i=0;i<38;i++){
+      const sx = (i*73 + frame*0.15) % W;
+      const sy = 30 + (i*41 % 260);
+      ctx.fillStyle = i%3===0 ? "#fff7a8" : "#ffffff";
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+  }
+
   // nubes
   clouds.forEach(c=>{
     ctx.fillStyle="rgba(255,255,255,.76)";
@@ -809,6 +836,12 @@ function drawHUD(){
     ctx.fillText("🌌 Lola Galaxia: "+Math.ceil(galaxyTimer/60)+"s",24,144);
   }
 
+  ctx.fillStyle="rgba(255,255,255,.65)";
+  ctx.font="bold 10px monospace";
+  ctx.textAlign="center";
+  ctx.fillText("Creado para Kylie por RichGPT", W/2, H-10);
+  ctx.textAlign="left";
+
   if(messageTimer>0){
     ctx.fillStyle="rgba(0,0,0,.62)";
     ctx.fillRect(24,170,W-48,62);
@@ -870,6 +903,8 @@ function drawMenu(){
   ctx.font="14px monospace";
   ctx.fillText("Monedas: "+coins+" 🪙",W/2,720);
   ctx.fillText("Botón SALTAR para jugar",W/2,744);
+  ctx.font="bold 11px monospace";
+  ctx.fillText("Creado para Kylie por RichGPT",W/2,782);
   ctx.textAlign="left";
 }
 
@@ -896,6 +931,9 @@ function drawEnd(title,subtitle){
   ctx.fillStyle="#222";
   ctx.font="bold 22px monospace";
   ctx.fillText("JUGAR DE NUEVO",W/2,H/2+80);
+  ctx.font="bold 11px monospace";
+  ctx.fillStyle="#fff";
+  ctx.fillText("Creado para Kylie por RichGPT",W/2,H-18);
   ctx.textAlign="left";
 }
 
