@@ -592,6 +592,80 @@ function drawPixelChicken(x,y,scale=4,walk=0){
   ctx.restore();
 }
 
+
+function drawStarShape(cx, cy, r1, r2){
+  ctx.beginPath();
+  for(let i=0;i<10;i++){
+    const a = -Math.PI/2 + i * Math.PI / 5;
+    const r = i % 2 === 0 ? r1 : r2;
+    ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGoldenAura(x,y,walk){
+  // halo dorado detrás de Lola
+  const cx = x + 34;
+  const cy = y + 34;
+  const pulse = 1 + Math.sin(frame/6)*0.08;
+
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = "#ffd700";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 48*pulse, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = "#fff2a8";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 65*pulse, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // dibuja Lola normal
+  drawPixelChicken(x,y,4,walk);
+
+  // capa dorada encima del cuerpo para que se vea amarilla en iPhone
+  ctx.save();
+  ctx.globalAlpha = 0.38;
+  ctx.fillStyle = "#ffd700";
+  ctx.fillRect(x+6, y+20, 54, 46);
+  ctx.fillRect(x+34, y+8, 34, 34);
+  ctx.restore();
+
+  // estrellitas girando alrededor
+  ctx.save();
+  for(let i=0;i<8;i++){
+    const angle = frame*0.08 + i * Math.PI * 2 / 8;
+    const sx = cx + Math.cos(angle) * 58;
+    const sy = cy + Math.sin(angle) * 48;
+    ctx.globalAlpha = 0.75 + Math.sin(frame/5+i)*0.25;
+    ctx.fillStyle = i%2===0 ? "#fff7a8" : "#ffd700";
+    drawStarShape(sx, sy, 8, 3);
+  }
+  ctx.restore();
+
+  // rayitos de poder
+  ctx.save();
+  ctx.strokeStyle = "#ffe066";
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.7;
+  for(let i=0;i<6;i++){
+    const a = frame*0.06 + i*Math.PI*2/6;
+    const x1 = cx + Math.cos(a)*38;
+    const y1 = cy + Math.sin(a)*34;
+    const x2 = cx + Math.cos(a)*72;
+    const y2 = cy + Math.sin(a)*62;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawWorld(){
   // cielo
   ctx.fillStyle="#91e7ff";
@@ -684,8 +758,17 @@ function drawWorld(){
       ctx.beginPath();
       ctx.ellipse(p.x+17,y+17,16,22,0,0,Math.PI*2);
       ctx.fill();
+
+      ctx.strokeStyle="#fff2a8";
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(p.x+17,y+17,25+Math.sin(frame/6)*4,0,Math.PI*2);
+      ctx.stroke();
+
       ctx.fillStyle="#fff";
-      ctx.fillRect(p.x+14,y+10,6,6);
+      ctx.fillRect(p.x+12,y+8,7,7);
+      ctx.fillStyle="#ffec66";
+      drawStarShape(p.x+34,y+2,7,3);
     }else if(p.type==="corn"){
       ctx.fillStyle="#ffcf33";
       ctx.fillRect(p.x+10,y+2,14,28);
@@ -730,9 +813,8 @@ function drawWorld(){
 
     if(!lola.inv || lola.inv%12<6){
       if(goldenActive){
-      ctx.filter = "brightness(1.5) sepia(1) hue-rotate(30deg) saturate(3)";
-      drawPixelChicken(lola.x,lola.y,4,lola.walk);
-      ctx.filter = "none";
+      // Efecto dorado compatible con iPhone/Safari: sin usar ctx.filter
+      drawGoldenAura(lola.x, lola.y, lola.walk);
     }else{
       drawPixelChicken(lola.x,lola.y,4,lola.walk);
     }
@@ -777,6 +859,12 @@ function drawHUD(){
   ctx.strokeStyle="#222";
   ctx.lineWidth=2;
   ctx.strokeRect(150,112,290,16);
+
+  if(goldenActive){
+    ctx.fillStyle="#b8860b";
+    ctx.font="bold 13px monospace";
+    ctx.fillText("✨ Súper Lola: "+Math.ceil(goldenTimer/60)+"s",24,140);
+  }
 
   if(messageTimer>0){
     ctx.fillStyle="rgba(0,0,0,.62)";
