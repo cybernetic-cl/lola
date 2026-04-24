@@ -2,72 +2,61 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>Kylie y la Gallinita Lola</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<title>Kylie y la Gallinita Lola PRO</title>
 <style>
   *{box-sizing:border-box}
-  body{
+  html,body{
     margin:0;
-    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    background:#b7ecff;
+    width:100%;
+    height:100%;
     overflow:hidden;
+    background:#86ddff;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     touch-action:none;
-  }
-  #gameWrap{
-    width:100vw;height:100vh;
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(#9ee7ff,#dff8ff);
   }
   canvas{
     width:100vw;
     height:100dvh;
-    image-rendering:pixelated;
-    background:#8bd66f;
     display:block;
+    image-rendering:pixelated;
+    background:#86ddff;
   }
-  #muteBtn{
+  .gameBtn{
     position:fixed;
-    left:16px;
-    bottom:calc(18px + env(safe-area-inset-bottom));
-    width:112px;
-    height:48px;
-    border-radius:16px;
-    border:3px solid #333;
-    background:rgba(255,255,255,.9);
-    font-weight:900;
-    font-size:15px;
-    box-shadow:0 6px 14px rgba(0,0,0,.22);
-    z-index:5;
-  }
-  #jumpBtn{
-    position:fixed;
-    right:16px;
-    bottom:calc(16px + env(safe-area-inset-bottom));
-    width:96px;
-    height:96px;
-    border-radius:50%;
-    border:4px solid #d45b94;
-    background:rgba(255,211,232,.9);
-    font-weight:900;
-    font-size:17px;
-    box-shadow:0 8px 16px rgba(0,0,0,.22);
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    z-index:10;
     user-select:none;
     -webkit-user-select:none;
+    border:none;
+    box-shadow:0 6px 16px rgba(0,0,0,.25);
+    font-weight:900;
   }
-  @media (min-width:800px){
-    #jumpBtn{display:none}
+  #jumpBtn{
+    right:18px;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    width:98px;
+    height:98px;
+    border-radius:50%;
+    background:#ffd6ea;
+    border:4px solid #d45b94;
+    font-size:17px;
+  }
+  #muteBtn{
+    left:16px;
+    bottom:calc(22px + env(safe-area-inset-bottom));
+    width:112px;
+    height:46px;
+    border-radius:15px;
+    background:#fff;
+    border:3px solid #333;
+    font-size:15px;
   }
 </style>
 </head>
 <body>
-<div id="gameWrap">
-  <canvas id="game" width="480" height="800"></canvas>
-</div>
-<button id="muteBtn">🔊 Música</button>
-<div id="jumpBtn">SALTAR</div>
+<canvas id="game" width="480" height="800"></canvas>
+<button id="muteBtn" class="gameBtn">🔊 Música</button>
+<button id="jumpBtn" class="gameBtn">SALTAR</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -76,21 +65,38 @@ ctx.imageSmoothingEnabled = false;
 
 const W = canvas.width;
 const H = canvas.height;
+const groundY = 610;
+const gravity = 0.50;
 
 let state = "menu";
 let level = 1;
 let score = 0;
+let coins = Number(localStorage.getItem("kylie_lola_coins") || 0);
 let lives = 3;
 let frame = 0;
-let speed = 4;
-let distance = 0;
+let speed = 2.1;
 let message = "";
 let messageTimer = 0;
-let floatingTexts = [];
 let goldenActive = false;
 let goldenTimer = 0;
+let galaxyActive = false;
+let galaxyTimer = 0;
+let galaxyEggSpawned = false;
 let musicMuted = false;
-let enemies = [];
+let musicTimer = null;
+let currentMusicMode = null;
+let musicStep = 0;
+let confetti = [];
+let floatingTexts = [];
+
+let lola, obstacles, prizes, enemies, clouds, hills, flowers;
+
+const levelData = [
+  {name:"Pradera Dulce", bg:"#91e7ff", grass:"#75cf5b", hill:"#57b85c", speed:2.1, targetScore:25, obstacleRate:175, prizeRate:72},
+  {name:"Granja de Maíz", bg:"#a7ecff", grass:"#7fd25c", hill:"#69bd4d", speed:2.35, targetScore:55, obstacleRate:160, prizeRate:68},
+  {name:"Bosque Estrella", bg:"#9bd6ff", grass:"#61c76a", hill:"#3fa56a", speed:2.60, targetScore:90, obstacleRate:145, prizeRate:63},
+  {name:"Arcoíris Kylie", bg:"#b8e7ff", grass:"#79d98f", hill:"#7cc9ff", speed:2.90, targetScore:135, obstacleRate:130, prizeRate:58}
+];
 
 const motivationalPhrases = [
   "¡Lo estás haciendo súper Kylie!",
@@ -100,249 +106,131 @@ const motivationalPhrases = [
   "¡Lola está feliz contigo Kylie!"
 ];
 
-const groundY = 610;
-const gravity = 0.50;
-
-let lola;
-let obstacles = [];
-let prizes = [];
-let clouds = [];
-let hills = [];
-let flowers = [];
-
-const levelData = [
-  {name:"Pradera Dulce", speed:2.1, targetScore:80, obstacleRate:175, prizeRate:78},
-  {name:"Camino de Maíz", speed:2.4, targetScore:180, obstacleRate:160, prizeRate:72},
-  {name:"Ruta Estrella", speed:2.7, targetScore:320, obstacleRate:145, prizeRate:66},
-  {name:"Mundo Arcoíris", speed:3.0, targetScore:500, obstacleRate:130, prizeRate:60}
-];
-
-function resetLola(){
-  lola = {
-    x:70,
-    y:groundY-76,
-    w:70,
-    h:70,
-    vy:0,
-    jumping:false,
-    inv:0,
-    walk:0
-  };
-}
-
-function rand(min,max){ return Math.random()*(max-min)+min; }
-
-function rects(a,b){
-  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
-}
-
-
-
-
-// --- MUSICA COMPLETA POR NIVEL ---
-let musicTimer = null;
-let currentMusicMode = null;
-let musicStep = 0;
-
 const levelMusic = [
-  {
-    tempo: 230,
-    melody:[523,587,659,784,659,587,523,392,440,523,587,659,587,523,440,392],
-    bass:[131,131,196,196,174,174,196,196],
-    beat:[1,0,0,1,0,0,1,0]
-  },
-  {
-    tempo: 210,
-    melody:[392,440,494,587,523,494,440,392,494,523,587,659,587,523,494,440],
-    bass:[196,196,147,147,165,165,196,196],
-    beat:[1,0,1,0,0,1,0,1]
-  },
-  {
-    tempo: 190,
-    melody:[659,784,880,784,659,587,659,784,880,988,880,784,659,587,523,587],
-    bass:[165,165,220,220,196,196,247,247],
-    beat:[1,1,0,1,0,1,1,0]
-  },
-  {
-    tempo: 170,
-    melody:[784,880,988,1046,988,880,784,659,880,988,1174,1046,988,880,784,659],
-    bass:[196,247,220,196,262,247,220,196],
-    beat:[1,0,1,1,0,1,0,1]
-  }
+  {tempo:230, melody:[523,587,659,784,659,587,523,392,440,523,587,659,587,523,440,392], bass:[131,131,196,196,174,174,196,196], beat:[1,0,0,1,0,0,1,0]},
+  {tempo:210, melody:[392,440,494,587,523,494,440,392,494,523,587,659,587,523,494,440], bass:[196,196,147,147,165,165,196,196], beat:[1,0,1,0,0,1,0,1]},
+  {tempo:190, melody:[659,784,880,784,659,587,659,784,880,988,880,784,659,587,523,587], bass:[165,165,220,220,196,196,247,247], beat:[1,1,0,1,0,1,1,0]},
+  {tempo:170, melody:[784,880,988,1046,988,880,784,659,880,988,1174,1046,988,880,784,659], bass:[196,247,220,196,262,247,220,196], beat:[1,0,1,1,0,1,0,1]}
 ];
 
 const heroTheme = {
-  tempo: 125,
+  tempo:125,
   melody:[784,988,1174,1318,1174,988,1046,1318,1568,1318,1174,1046,988,1174,1318,1568],
   bass:[196,196,247,247,262,262,247,247],
   beat:[1,1,1,0,1,1,0,1]
 };
 
+function rand(min,max){return Math.random()*(max-min)+min;}
+function rects(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;}
+
 function getAudio(){
-  return window.audioCtx || (window.audioCtx = new (window.AudioContext||window.webkitAudioContext)());
+  return window.audioCtx || (window.audioCtx = new (window.AudioContext || window.webkitAudioContext)());
 }
-
-function playTone(freq, duration=0.12, type="sine", volume=0.04){
+function playTone(freq,duration=0.12,type="sine",volume=0.04){
   if(musicMuted) return;
-  const ctx = getAudio();
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-
+  const ac = getAudio();
+  const o = ac.createOscillator();
+  const g = ac.createGain();
   o.frequency.value = freq;
   o.type = type;
-
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.015);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-
-  o.connect(g);
-  g.connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + duration + 0.03);
+  g.gain.setValueAtTime(0.0001, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(volume, ac.currentTime + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+  o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + duration + 0.03);
 }
-
-function playNoise(duration=0.05, volume=0.025){
+function playNoise(duration=0.05,volume=0.022){
   if(musicMuted) return;
-  const ctx = getAudio();
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const ac = getAudio();
+  const buffer = ac.createBuffer(1, ac.sampleRate*duration, ac.sampleRate);
   const data = buffer.getChannelData(0);
-  for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
-
-  const src = ctx.createBufferSource();
-  const g = ctx.createGain();
+  for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
+  const src = ac.createBufferSource();
+  const g = ac.createGain();
   g.gain.value = volume;
-
   src.buffer = buffer;
-  src.connect(g);
-  g.connect(ctx.destination);
-  src.start();
-  src.stop(ctx.currentTime + duration);
+  src.connect(g); g.connect(ac.destination);
+  src.start(); src.stop(ac.currentTime+duration);
 }
-
 function stopAllMusic(){
-  if(musicTimer){
-    clearInterval(musicTimer);
-    musicTimer = null;
-  }
+  if(musicTimer) clearInterval(musicTimer);
+  musicTimer = null;
   currentMusicMode = null;
   musicStep = 0;
 }
-
-function startSequencer(theme, mode){
-  if(currentMusicMode === mode) return;
+function startSequencer(theme,mode){
+  if(musicMuted || currentMusicMode === mode) return;
   stopAllMusic();
   currentMusicMode = mode;
   musicStep = 0;
-
   musicTimer = setInterval(()=>{
     const m = theme.melody[musicStep % theme.melody.length];
     const b = theme.bass[Math.floor(musicStep/2) % theme.bass.length];
     const beat = theme.beat[musicStep % theme.beat.length];
-
-    // melodía principal
-    playTone(m, 0.16, "triangle", 0.042);
-
-    // armonía suave cada dos pasos
-    if(musicStep % 2 === 0){
-      playTone(m * 1.25, 0.12, "sine", 0.018);
-    }
-
-    // bajo
-    if(musicStep % 2 === 0){
-      playTone(b, 0.22, "square", 0.026);
-    }
-
-    // percusión suave
-    if(beat){
-      playNoise(0.045, 0.018);
-    }
-
+    playTone(m,0.16,"triangle",0.040);
+    if(musicStep%2===0) playTone(m*1.25,0.12,"sine",0.016);
+    if(musicStep%2===0) playTone(b,0.22,"square",0.023);
+    if(beat) playNoise(0.04,0.015);
     musicStep++;
   }, theme.tempo);
 }
-
 function playBgMusic(){
   if(musicMuted) return;
-  const idx = Math.max(0, Math.min(level-1, levelMusic.length-1));
-  startSequencer(levelMusic[idx], "level-" + level);
+  startSequencer(levelMusic[Math.min(level-1, levelMusic.length-1)], "level-"+level);
 }
-
-function stopBgMusic(){
-  if(currentMusicMode && currentMusicMode.startsWith("level")){
-    stopAllMusic();
-  }
-}
-
 function playHeroMusic(){
   if(musicMuted) return;
   startSequencer(heroTheme, "hero");
 }
-
-function stopHeroMusic(){
-  if(currentMusicMode === "hero"){
-    stopAllMusic();
-  }
-}
-
 function beep(freq=440,dur=.06){
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if(!window.audioCtx) window.audioCtx = new AC();
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.frequency.value=freq;
-    o.type="square";
-    g.gain.value=.04;
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime+dur);
-  }catch(e){}
+  if(musicMuted) return;
+  playTone(freq,dur,"square",0.035);
 }
 
+function resetLola(){
+  lola = {x:70,y:groundY-76,w:70,h:70,vy:0,jumping:false,walk:0,inv:0};
+}
 function startLevel(n){
-  const cfg = levelData[n-1];
   level = n;
+  const cfg = levelData[level-1];
   speed = cfg.speed;
-  distance = 0;
+  goldenActive = false;
+  goldenTimer = 0;
+  galaxyActive = false;
+  galaxyTimer = 0;
+  galaxyEggSpawned = false;
   obstacles = [];
   prizes = [];
   enemies = [];
-  floatingTexts = [];
   clouds = [];
   hills = [];
   flowers = [];
+  floatingTexts = [];
   resetLola();
 
-  for(let i=0;i<8;i++){
-    clouds.push({x:rand(0,W), y:rand(35,150), s:rand(.8,1.5), dx:rand(.25,.55)});
-  }
-  for(let i=0;i<7;i++){
-    hills.push({x:i*220, y:groundY-70-rand(0,35), w:260, h:90});
-  }
-  for(let i=0;i<24;i++){
-    flowers.push({x:rand(0,W), y:rand(groundY+20,H-25), c:["#ff75a0","#ffe066","#a78bfa","#fff"][i%4]});
-  }
+  for(let i=0;i<7;i++) clouds.push({x:rand(0,W),y:rand(75,230),s:rand(.7,1.3),dx:rand(.18,.4)});
+  for(let i=0;i<5;i++) hills.push({x:i*145,y:groundY-80-rand(0,55),w:220,h:100});
+  for(let i=0;i<25;i++) flowers.push({x:rand(0,W),y:rand(groundY+20,H-35),c:["#ff75a0","#ffe066","#a78bfa","#fff"][i%4]});
 
-  message = "Nivel " + level + ": " + cfg.name;
+  message = "Nivel "+level+": "+cfg.name;
   messageTimer = 140;
   state = "play";
-  if(window.audioCtx && !goldenActive) playBgMusic();
-}
-
-function resetGame(){
-  stopHeroMusic();
   playBgMusic();
+}
+function resetGame(){
   score = 0;
   lives = 3;
+  confetti = [];
   startLevel(1);
 }
 
 function jump(){
-  if(state === "menu"){ resetGame(); return; }
-  if(state === "gameover" || state === "win"){ resetGame(); return; }
+  if(state==="menu"){ resetGame(); return; }
+  if(state==="gameover" || state==="win"){ resetGame(); return; }
   if(!lola.jumping){
-    lola.jumping = true;
     lola.vy = -18.5;
-    beep(650,.05);
+    lola.jumping = true;
+    beep(660,.05);
   }
 }
 
@@ -350,7 +238,7 @@ function spawnThings(){
   const cfg = levelData[level-1];
 
   if(frame % Math.max(105, Math.floor(cfg.obstacleRate - level*2)) === 0){
-    const type = Math.random() > .45 ? "rock" : "cactus";
+    const type = Math.random()>.5 ? "rock" : "cactus";
     obstacles.push({
       x:W+50,
       y:type==="rock" ? groundY-34 : groundY-54,
@@ -360,101 +248,113 @@ function spawnThings(){
     });
   }
 
-  if(frame % Math.max(35, Math.floor(cfg.prizeRate - level*4)) === 0){
-    const t = ["corn","star","heart"][Math.floor(Math.random()*3)];
+  if(frame % Math.max(38, Math.floor(cfg.prizeRate - level*2)) === 0){
+    const r = Math.random();
+    let type = "corn";
+    if(r>.82) type="star";
+    else if(r>.62) type="heart";
+    else if(r>.55) type="berry";
     const high = Math.random()>.5;
     prizes.push({
       x:W+50,
       y:high ? groundY-180-rand(0,30) : groundY-105,
-      w:34,
-      h:34,
-      type:t,
-      taken:false,
-      bob:rand(0,30)
+      w:34,h:34,type,taken:false,bob:rand(0,30)
+    });
+  }
+
+  // Huevo de oro, aparece ocasionalmente.
+  if(frame % 520 === 0){
+    prizes.push({x:W+50,y:groundY-125,w:42,h:42,type:"gold",taken:false,bob:0});
+  }
+
+  // Huevo galaxia: aparece una vez por nivel y da 5 segundos de súper poder.
+  const prevTarget = level===1 ? 0 : levelData[level-2].targetScore;
+  const midTarget = prevTarget + (cfg.targetScore - prevTarget) * 0.45;
+  if(!galaxyEggSpawned && score >= midTarget){
+    galaxyEggSpawned = true;
+    prizes.push({x:W+50,y:groundY-185,w:46,h:46,type:"galaxy",taken:false,bob:0});
+  }
+
+  // Enemigos dificultad baja escalable.
+  const enemyRate = Math.max(190, 430 - level*55);
+  if(frame % enemyRate === 0){
+    enemies.push({
+      x:W+55,y:groundY-54,w:46,h:44,
+      speed:speed + .45 + level*.16,
+      type: level%2===0 ? "fox" : "bug"
     });
   }
 }
 
 function hitLife(){
-  if(lola.inv > 0 || goldenActive) return;
+  if(lola.inv>0 || goldenActive || galaxyActive) return;
   lives--;
   lola.inv = 95;
   message = "¡Cuidado Lola!";
   messageTimer = 70;
   beep(130,.08);
-  if(lives <= 0){
+  if(lives<=0){
     state = "gameover";
+    stopAllMusic();
+  }
+}
+
+function levelUp(){
+  createConfetti();
+  if(level < levelData.length){
+    const next = level + 1;
+    startLevel(next);
+    message = motivationalPhrases[(next-2)%motivationalPhrases.length];
+    messageTimer = 180;
+  }else{
+    state = "win";
+    stopAllMusic();
+  }
+}
+
+function createConfetti(){
+  confetti = [];
+  for(let i=0;i<70;i++){
+    confetti.push({x:rand(0,W),y:rand(-60,180),vx:rand(-1.5,1.5),vy:rand(1,4),c:["#ff75a0","#ffe066","#74c0fc","#69db7c","#b197fc"][i%5],life:120});
   }
 }
 
 function update(){
   frame++;
   if(messageTimer>0) messageTimer--;
-  if(state !== "play") return;
+
+  // confetti update
+  confetti.forEach(c=>{c.x+=c.vx;c.y+=c.vy;c.life--;});
+  confetti = confetti.filter(c=>c.life>0);
+
+  if(state!=="play") return;
 
   spawnThings();
 
-// generar huevo dorado ocasional
-if(frame % 500 === 0){
-  prizes.push({
-    x:W+50,
-    y:groundY-120,
-    w:40,
-    h:40,
-    type:"gold",
-    taken:false,
-    bob:0
-  });
-}
-
-// enemigos con dificultad baja y escalable por nivel
-const enemyRate = Math.max(190, 430 - level * 55);
-if(frame % enemyRate === 0){
-  enemies.push({
-    x:W+55,
-    y:groundY-54,
-    w:46,
-    h:44,
-    speed:speed + 0.5 + level * 0.18,
-    type: level % 2 === 0 ? "fox" : "bug"
-  });
-}
-
-  distance += speed;
-
-  lola.walk += speed * 2.2;
+  lola.walk += speed*2.2;
   lola.y += lola.vy;
   lola.vy += gravity;
-
-  if(lola.y >= groundY-lola.h){
+  if(lola.y > groundY-lola.h){
     lola.y = groundY-lola.h;
     lola.vy = 0;
     lola.jumping = false;
   }
 
-  obstacles.forEach(o => o.x -= speed);
-  prizes.forEach(p => p.x -= speed);
-  enemies.forEach(e => e.x -= e.speed);
-  clouds.forEach(c => {
-    c.x -= c.dx;
-    if(c.x < -120) c.x = W + 120;
-  });
-  hills.forEach(h => {
-    h.x -= speed*.35;
-    if(h.x < -280) h.x = W + 80;
-  });
-  flowers.forEach(f => {
-    f.x -= speed;
-    if(f.x < -20) f.x = W + rand(0,80);
-  });
+  obstacles.forEach(o=>o.x-=speed);
+  prizes.forEach(p=>p.x-=speed);
+  enemies.forEach(e=>e.x-=e.speed);
+  clouds.forEach(c=>{c.x-=c.dx;if(c.x<-130)c.x=W+80;});
+  hills.forEach(h=>{h.x-=speed*.25;if(h.x<-260)h.x=W+120;});
+  flowers.forEach(f=>{f.x-=speed;if(f.x<-20)f.x=W+rand(0,80);});
 
-  obstacles = obstacles.filter(o => o.x > -100);
-  prizes = prizes.filter(p => p.x > -100 && !p.taken);
-  enemies = enemies.filter(e => e.x > -100);
+  obstacles = obstacles.filter(o=>o.x>-100);
+  prizes = prizes.filter(p=>p.x>-100 && !p.taken);
+  enemies = enemies.filter(e=>e.x>-100);
 
-  const lolaHit = {x:lola.x+12, y:lola.y+12, w:lola.w-24, h:lola.h-14};
+  const lolaHit = {x:lola.x+12,y:lola.y+12,w:lola.w-24,h:lola.h-14};
+
   for(const o of obstacles){
-    if(rects(lolaHit, o)){
+    if(rects(lolaHit,o)){
       hitLife();
       o.x = -120;
       break;
@@ -462,12 +362,14 @@ if(frame % enemyRate === 0){
   }
 
   for(const e of enemies){
-    if(rects(lolaHit, e)){
-      if(goldenActive){
-        score += 2;
-        floatingTexts.push({x:e.x,y:e.y,text:"+2 pts",life:60});
+    if(rects(lolaHit,e)){
+      if(goldenActive || galaxyActive){
+        score += galaxyActive ? 4 : 2;
+        coins += 2;
+        localStorage.setItem("kylie_lola_coins", coins);
+        floatingTexts.push({x:e.x,y:e.y,text: galaxyActive ? "+4 pts" : "+2 pts",life:60});
         e.x = -120;
-        beep(700,.05);
+        beep(720,.05);
       }else{
         hitLife();
         e.x = -120;
@@ -479,46 +381,65 @@ if(frame % enemyRate === 0){
   for(const p of prizes){
     if(rects({x:lola.x,y:lola.y,w:lola.w,h:lola.h}, p)){
       p.taken = true;
-      // Clasificación de premios
       let gained = 1;
-      if(p.type==="star") gained = 5;
-      else if(p.type==="heart") gained = 3;
-      else if(p.type==="gold") gained = 0;
-      else gained = 1;
+      if(p.type==="star") gained=5;
+      else if(p.type==="heart") gained=3;
+      else if(p.type==="berry") gained=0;
+      else if(p.type==="gold") gained=0;
+      else if(p.type==="galaxy") gained=0;
 
-      score += gained;
-
-      if(p.type==="gold"){
+      if(p.type==="berry"){
+        lives = Math.min(5, lives+1);
+        floatingTexts.push({x:p.x,y:p.y,text:"+1 vida",life:70});
+        message = "🍓 ¡Vida extra Kylie!";
+        messageTimer = 80;
+      }else if(p.type==="gold"){
         goldenActive = true;
+        galaxyActive = false;
         goldenTimer = 180;
+        galaxyTimer = 0;
+        floatingTexts.push({x:p.x,y:p.y,text:"¡Súper poder!",life:80});
         message = "✨ ¡Gallina dorada invencible!";
-        messageTimer = 90;
-        stopBgMusic();
+        messageTimer = 100;
+        stopAllMusic();
         playHeroMusic();
+      }else if(p.type==="galaxy"){
+        galaxyActive = true;
+        goldenActive = false;
+        galaxyTimer = 300; // 5 segundos aprox
+        goldenTimer = 0;
+        floatingTexts.push({x:p.x,y:p.y,text:"¡Poder galaxia!",life:90});
+        message = "🌌 ¡Lola Galaxia por 5 segundos!";
+        messageTimer = 120;
+        stopAllMusic();
+        playHeroMusic();
+      }else{
+        score += gained;
+        coins += gained;
+        localStorage.setItem("kylie_lola_coins", coins);
+        floatingTexts.push({x:p.x,y:p.y,text:"+"+gained+" pts",life:60});
       }
-
-      floatingTexts.push({
-        x:p.x,
-        y:p.y,
-        text:"+" + gained + " pts",
-        life:60
-      });
-
       beep(900,.04);
     }
   }
 
-  floatingTexts.forEach(t=>{
-    t.y -= 0.8;
-    t.life--;
-  });
+  floatingTexts.forEach(t=>{t.y-=0.8;t.life--;});
   floatingTexts = floatingTexts.filter(t=>t.life>0);
 
   if(goldenActive){
     goldenTimer--;
     if(goldenTimer<=0){
       goldenActive=false;
-      stopHeroMusic();
+      stopAllMusic();
+      playBgMusic();
+    }
+  }
+
+  if(galaxyActive){
+    galaxyTimer--;
+    if(galaxyTimer<=0){
+      galaxyActive=false;
+      stopAllMusic();
       playBgMusic();
     }
   }
@@ -526,16 +447,7 @@ if(frame % enemyRate === 0){
   if(lola.inv>0) lola.inv--;
 
   const cfg = levelData[level-1];
-  if(score >= cfg.targetScore){
-    if(level < levelData.length){
-      const next = level + 1;
-      startLevel(next);
-      message = motivationalPhrases[(next-2) % motivationalPhrases.length];
-      messageTimer = 170;
-    }else{
-      state = "win";
-    }
-  }
+  if(score >= cfg.targetScore) levelUp();
 }
 
 function drawPixelChicken(x,y,scale=4,walk=0){
@@ -553,7 +465,7 @@ function drawPixelChicken(x,y,scale=4,walk=0){
   line(11,14,2,1,"#222"); line(13,12,1,2,"#222");
   line(14,9,1,3,"#222"); line(12,8,2,1,"#222");
 
-  // cuerpo blanco
+  // cuerpo
   line(3,6,7,1,"#fff"); line(3,7,8,2,"#fff"); line(2,9,10,5,"#fff");
   line(4,14,7,1,"#fff"); line(12,9,2,3,"#fff");
 
@@ -572,9 +484,8 @@ function drawPixelChicken(x,y,scale=4,walk=0){
   px(12,5,"#111");
   line(14,6,2,1,"#f5b22d"); line(14,7,1,1,"#f5b22d");
 
-  // patas animadas tipo carrera, visibles debajo del cuerpo
-  const foot = "#f39c12";
-  const dark = "#a85f00";
+  // patas con animación visible
+  const foot="#f39c12", dark="#a85f00";
   if(step===0){
     line(5,16,1,4,foot); line(3,20,5,1,foot); line(3,21,2,1,dark);
     line(10,16,1,3,foot); line(10,19,4,1,foot); line(13,20,2,1,dark);
@@ -592,136 +503,170 @@ function drawPixelChicken(x,y,scale=4,walk=0){
   ctx.restore();
 }
 
-
-function drawStarShape(cx, cy, r1, r2){
+function drawStarShape(cx,cy,r1,r2){
   ctx.beginPath();
   for(let i=0;i<10;i++){
-    const a = -Math.PI/2 + i * Math.PI / 5;
-    const r = i % 2 === 0 ? r1 : r2;
-    ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+    const a=-Math.PI/2+i*Math.PI/5;
+    const r=i%2===0?r1:r2;
+    ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
   }
   ctx.closePath();
   ctx.fill();
 }
 
 function drawGoldenAura(x,y,walk){
-  // halo dorado detrás de Lola
-  const cx = x + 34;
-  const cy = y + 34;
-  const pulse = 1 + Math.sin(frame/6)*0.08;
+  const cx=x+34, cy=y+34;
+  const pulse=1+Math.sin(frame/6)*.08;
 
   ctx.save();
-  ctx.globalAlpha = 0.35;
-  ctx.fillStyle = "#ffd700";
-  ctx.beginPath();
-  ctx.arc(cx, cy, 48*pulse, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = "#fff2a8";
-  ctx.beginPath();
-  ctx.arc(cx, cy, 65*pulse, 0, Math.PI*2);
-  ctx.fill();
+  ctx.globalAlpha=.36;
+  ctx.fillStyle="#ffd700";
+  ctx.beginPath(); ctx.arc(cx,cy,48*pulse,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=.22;
+  ctx.fillStyle="#fff2a8";
+  ctx.beginPath(); ctx.arc(cx,cy,66*pulse,0,Math.PI*2); ctx.fill();
   ctx.restore();
 
-  // dibuja Lola normal
   drawPixelChicken(x,y,4,walk);
 
-  // capa dorada encima del cuerpo para que se vea amarilla en iPhone
+  // tinte dorado manual compatible iPhone
   ctx.save();
-  ctx.globalAlpha = 0.38;
-  ctx.fillStyle = "#ffd700";
-  ctx.fillRect(x+6, y+20, 54, 46);
-  ctx.fillRect(x+34, y+8, 34, 34);
+  ctx.globalAlpha=.38;
+  ctx.fillStyle="#ffd700";
+  ctx.fillRect(x+6,y+20,54,46);
+  ctx.fillRect(x+34,y+8,34,34);
   ctx.restore();
 
-  // estrellitas girando alrededor
+  // estrellitas de súper poder
   ctx.save();
   for(let i=0;i<8;i++){
-    const angle = frame*0.08 + i * Math.PI * 2 / 8;
-    const sx = cx + Math.cos(angle) * 58;
-    const sy = cy + Math.sin(angle) * 48;
-    ctx.globalAlpha = 0.75 + Math.sin(frame/5+i)*0.25;
-    ctx.fillStyle = i%2===0 ? "#fff7a8" : "#ffd700";
-    drawStarShape(sx, sy, 8, 3);
+    const angle=frame*.08+i*Math.PI*2/8;
+    const sx=cx+Math.cos(angle)*58;
+    const sy=cy+Math.sin(angle)*48;
+    ctx.globalAlpha=.75+Math.sin(frame/5+i)*.25;
+    ctx.fillStyle=i%2===0 ? "#fff7a8" : "#ffd700";
+    drawStarShape(sx,sy,8,3);
   }
   ctx.restore();
 
-  // rayitos de poder
+  // rayos
   ctx.save();
-  ctx.strokeStyle = "#ffe066";
-  ctx.lineWidth = 3;
-  ctx.globalAlpha = 0.7;
+  ctx.strokeStyle="#ffe066";
+  ctx.lineWidth=3;
+  ctx.globalAlpha=.7;
   for(let i=0;i<6;i++){
-    const a = frame*0.06 + i*Math.PI*2/6;
-    const x1 = cx + Math.cos(a)*38;
-    const y1 = cy + Math.sin(a)*34;
-    const x2 = cx + Math.cos(a)*72;
-    const y2 = cy + Math.sin(a)*62;
+    const a=frame*.06+i*Math.PI*2/6;
     ctx.beginPath();
-    ctx.moveTo(x1,y1);
-    ctx.lineTo(x2,y2);
+    ctx.moveTo(cx+Math.cos(a)*38, cy+Math.sin(a)*34);
+    ctx.lineTo(cx+Math.cos(a)*72, cy+Math.sin(a)*62);
     ctx.stroke();
   }
   ctx.restore();
 }
 
+
+function drawGalaxyAura(x,y,walk){
+  const cx=x+34, cy=y+34;
+  const pulse=1+Math.sin(frame/5)*.10;
+
+  ctx.save();
+  ctx.globalAlpha=.35;
+  ctx.fillStyle="#7c3aed";
+  ctx.beginPath(); ctx.arc(cx,cy,54*pulse,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=.25;
+  ctx.fillStyle="#22d3ee";
+  ctx.beginPath(); ctx.arc(cx,cy,74*pulse,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  drawPixelChicken(x,y,4,walk);
+
+  // tinte galaxia compatible iPhone
+  ctx.save();
+  ctx.globalAlpha=.35;
+  const grad = ctx.createLinearGradient(x,y,x+70,y+70);
+  grad.addColorStop(0,"#7c3aed");
+  grad.addColorStop(.5,"#22d3ee");
+  grad.addColorStop(1,"#ff4fd8");
+  ctx.fillStyle=grad;
+  ctx.fillRect(x+6,y+20,54,46);
+  ctx.fillRect(x+34,y+8,34,34);
+  ctx.restore();
+
+  // órbita de estrellas y planetitas
+  ctx.save();
+  for(let i=0;i<10;i++){
+    const angle=frame*.10+i*Math.PI*2/10;
+    const sx=cx+Math.cos(angle)*64;
+    const sy=cy+Math.sin(angle)*52;
+    ctx.globalAlpha=.75+Math.sin(frame/4+i)*.25;
+    ctx.fillStyle=i%3===0 ? "#22d3ee" : (i%3===1 ? "#ff4fd8" : "#fff");
+    drawStarShape(sx,sy,8,3);
+  }
+  ctx.restore();
+
+  // aro galáctico
+  ctx.save();
+  ctx.strokeStyle="#ffffff";
+  ctx.globalAlpha=.65;
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.ellipse(cx,cy,76,24,Math.sin(frame/18)*.8,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawWorld(){
+  const cfg = levelData[level-1] || levelData[0];
+
   // cielo
-  ctx.fillStyle="#91e7ff";
+  ctx.fillStyle=cfg.bg;
   ctx.fillRect(0,0,W,H);
 
   // nubes
   clouds.forEach(c=>{
-    ctx.fillStyle="rgba(255,255,255,.75)";
+    ctx.fillStyle="rgba(255,255,255,.76)";
     ctx.beginPath();
-    ctx.arc(c.x,c.y,18*c.s,0,Math.PI*2);
-    ctx.arc(c.x+24*c.s,c.y+3,22*c.s,0,Math.PI*2);
-    ctx.arc(c.x+50*c.s,c.y,16*c.s,0,Math.PI*2);
+    ctx.arc(c.x,c.y,16*c.s,0,Math.PI*2);
+    ctx.arc(c.x+22*c.s,c.y+3,21*c.s,0,Math.PI*2);
+    ctx.arc(c.x+47*c.s,c.y,15*c.s,0,Math.PI*2);
     ctx.fill();
   });
 
-  // montañas / mundo plano tipo ruta
+  // cerros
   hills.forEach(h=>{
-    ctx.fillStyle="#57b85c";
+    ctx.fillStyle=cfg.hill;
     ctx.beginPath();
     ctx.ellipse(h.x,h.y,h.w/2,h.h,0,0,Math.PI*2);
     ctx.fill();
   });
 
-  // piso plano
-  ctx.fillStyle="#75cf5b";
+  // suelo
+  ctx.fillStyle=cfg.grass;
   ctx.fillRect(0,groundY,W,H-groundY);
-
-  // camino plano
   ctx.fillStyle="#d9b879";
-  ctx.fillRect(0,groundY+45,W,78);
-
-  // línea de suelo
+  ctx.fillRect(0,groundY+52,W,88);
   ctx.fillStyle="#3f8f3c";
   ctx.fillRect(0,groundY,W,8);
 
-  // flores animadas
+  // flores
   flowers.forEach(f=>{
-    ctx.fillStyle=f.c;
-    ctx.fillRect(f.x,f.y,5,5);
-    ctx.fillStyle="#2b8a3e";
-    ctx.fillRect(f.x+2,f.y+5,2,6);
+    ctx.fillStyle=f.c; ctx.fillRect(f.x,f.y,5,5);
+    ctx.fillStyle="#2b8a3e"; ctx.fillRect(f.x+2,f.y+5,2,6);
   });
 
   // obstáculos
   obstacles.forEach(o=>{
     if(o.type==="rock"){
-      ctx.fillStyle="#555"; ctx.fillRect(o.x+6,o.y+12,38,28);
-      ctx.fillStyle="#777"; ctx.fillRect(o.x+13,o.y+2,27,22);
-      ctx.fillStyle="#333"; ctx.fillRect(o.x+6,o.y+36,38,6);
+      ctx.fillStyle="#555"; ctx.fillRect(o.x+6,o.y+12,34,23);
+      ctx.fillStyle="#777"; ctx.fillRect(o.x+12,o.y+2,25,20);
+      ctx.fillStyle="#333"; ctx.fillRect(o.x+6,o.y+32,34,5);
     }else{
       ctx.fillStyle="#2f9e44";
-      ctx.fillRect(o.x+15,o.y,14,68);
-      ctx.fillRect(o.x+2,o.y+23,28,12);
-      ctx.fillRect(o.x+25,o.y+36,18,12);
+      ctx.fillRect(o.x+13,o.y,12,56);
+      ctx.fillRect(o.x+2,o.y+20,25,10);
+      ctx.fillRect(o.x+22,o.y+32,16,10);
       ctx.fillStyle="#1f6f31";
-      ctx.fillRect(o.x+17,o.y+5,4,58);
+      ctx.fillRect(o.x+15,o.y+5,3,46);
     }
   });
 
@@ -731,108 +676,105 @@ function drawWorld(){
       ctx.fillStyle="#d96b27";
       ctx.fillRect(e.x+8,e.y+12,30,24);
       ctx.fillRect(e.x+30,e.y+4,15,18);
-      ctx.fillStyle="#fff";
-      ctx.fillRect(e.x+4,e.y+22,10,10);
-      ctx.fillStyle="#222";
-      ctx.fillRect(e.x+38,e.y+10,4,4);
-      ctx.fillStyle="#8a3f15";
-      ctx.fillRect(e.x+6,e.y+35,8,7);
-      ctx.fillRect(e.x+30,e.y+35,8,7);
+      ctx.fillStyle="#fff"; ctx.fillRect(e.x+4,e.y+22,10,10);
+      ctx.fillStyle="#222"; ctx.fillRect(e.x+38,e.y+10,4,4);
+      ctx.fillStyle="#8a3f15"; ctx.fillRect(e.x+6,e.y+35,8,7); ctx.fillRect(e.x+30,e.y+35,8,7);
     }else{
       ctx.fillStyle="#6b4fbb";
       ctx.fillRect(e.x+8,e.y+14,32,22);
-      ctx.fillStyle="#222";
-      ctx.fillRect(e.x+14,e.y+20,4,4);
-      ctx.fillRect(e.x+30,e.y+20,4,4);
-      ctx.fillStyle="#3b2b78";
-      ctx.fillRect(e.x+8,e.y+36,8,5);
-      ctx.fillRect(e.x+30,e.y+36,8,5);
+      ctx.fillStyle="#222"; ctx.fillRect(e.x+14,e.y+20,4,4); ctx.fillRect(e.x+30,e.y+20,4,4);
+      ctx.fillStyle="#3b2b78"; ctx.fillRect(e.x+8,e.y+36,8,5); ctx.fillRect(e.x+30,e.y+36,8,5);
     }
   });
 
   // premios
   prizes.forEach(p=>{
     const y = p.y + Math.sin((frame+p.bob)/10)*5;
-    if(p.type==="gold"){
-      ctx.fillStyle="#ffd700";
-      ctx.beginPath();
-      ctx.ellipse(p.x+17,y+17,16,22,0,0,Math.PI*2);
-      ctx.fill();
+    if(p.type==="galaxy"){
+      const gy = y;
+      const grad = ctx.createLinearGradient(p.x,gy,p.x+42,gy+42);
+      grad.addColorStop(0,"#4c1d95");
+      grad.addColorStop(.45,"#2563eb");
+      grad.addColorStop(1,"#ff4fd8");
+      ctx.fillStyle=grad;
+      ctx.beginPath(); ctx.ellipse(p.x+22,gy+22,18,24,0,0,Math.PI*2); ctx.fill();
 
-      ctx.strokeStyle="#fff2a8";
+      ctx.strokeStyle="#bdefff";
       ctx.lineWidth=3;
-      ctx.beginPath();
-      ctx.arc(p.x+17,y+17,25+Math.sin(frame/6)*4,0,Math.PI*2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x+22,gy+22,29+Math.sin(frame/5)*5,0,Math.PI*2); ctx.stroke();
 
       ctx.fillStyle="#fff";
-      ctx.fillRect(p.x+12,y+8,7,7);
-      ctx.fillStyle="#ffec66";
-      drawStarShape(p.x+34,y+2,7,3);
-    }else if(p.type==="corn"){
+      drawStarShape(p.x+12,gy+9,5,2);
+      drawStarShape(p.x+34,gy+18,6,2);
+      drawStarShape(p.x+22,gy+34,4,2);
+    }else if(p.type==="gold"){
+      ctx.fillStyle="#ffd700";
+      ctx.beginPath(); ctx.ellipse(p.x+20,y+20,16,22,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="#fff2a8"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(p.x+20,y+20,25+Math.sin(frame/6)*4,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="#fff"; ctx.fillRect(p.x+13,y+9,7,7);
+      ctx.fillStyle="#ffec66"; drawStarShape(p.x+36,y+4,7,3);
+    }else if(p.type==="star"){
+      ctx.fillStyle="#ffd43b"; drawStarShape(p.x+17,y+17,18,8);
+    }else if(p.type==="heart"){
+      ctx.fillStyle="#ff5c8a";
+      ctx.fillRect(p.x+8,y+10,20,18); ctx.fillRect(p.x+4,y+14,28,12);
+    }else if(p.type==="berry"){
+      ctx.fillStyle="#ff3b5c";
+      ctx.beginPath(); ctx.arc(p.x+17,y+18,15,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#2f9e44"; ctx.fillRect(p.x+12,y+3,10,8);
+    }else{
       ctx.fillStyle="#ffcf33";
       ctx.fillRect(p.x+10,y+2,14,28);
       ctx.fillStyle="#2f9e44";
-      ctx.fillRect(p.x+4,y+18,8,16);
-      ctx.fillRect(p.x+24,y+18,8,16);
-    }else if(p.type==="star"){
-      ctx.fillStyle="#ffd43b";
-      ctx.beginPath();
-      for(let i=0;i<10;i++){
-        const a=-Math.PI/2+i*Math.PI/5;
-        const r=i%2?8:18;
-        ctx.lineTo(p.x+17+Math.cos(a)*r,y+17+Math.sin(a)*r);
-      }
-      ctx.fill();
-    }else{
-      ctx.fillStyle="#ff5c8a";
-      ctx.fillRect(p.x+8,y+10,20,18);
-      ctx.fillRect(p.x+4,y+14,28,12);
+      ctx.fillRect(p.x+4,y+18,8,16); ctx.fillRect(p.x+24,y+18,8,16);
     }
   });
 
-  // textos flotantes de puntos
+  // textos flotantes
   floatingTexts.forEach(t=>{
     ctx.save();
-    ctx.globalAlpha = Math.max(0, t.life/60);
-    ctx.fillStyle = "#fff";
-    ctx.strokeStyle = "#222";
-    ctx.lineWidth = 4;
-    ctx.font = "bold 24px monospace";
-    ctx.strokeText(t.text, t.x, t.y);
-    ctx.fillText(t.text, t.x, t.y);
+    ctx.globalAlpha=Math.max(0,t.life/70);
+    ctx.fillStyle="#fff";
+    ctx.strokeStyle="#222";
+    ctx.lineWidth=4;
+    ctx.font="bold 22px monospace";
+    ctx.strokeText(t.text,t.x,t.y);
+    ctx.fillText(t.text,t.x,t.y);
     ctx.restore();
   });
 
-  // sombra y gallina
+  // sombra + Lola
   if(state==="play" || state==="gameover" || state==="win"){
     ctx.fillStyle="rgba(0,0,0,.18)";
     ctx.beginPath();
-    ctx.ellipse(lola.x+35, groundY-8, lola.jumping?22:30, 8, 0, 0, Math.PI*2);
+    ctx.ellipse(lola.x+35,groundY-8,lola.jumping?22:30,8,0,0,Math.PI*2);
     ctx.fill();
 
     if(!lola.inv || lola.inv%12<6){
-      if(goldenActive){
-      // Efecto dorado compatible con iPhone/Safari: sin usar ctx.filter
-      drawGoldenAura(lola.x, lola.y, lola.walk);
-    }else{
-      drawPixelChicken(lola.x,lola.y,4,lola.walk);
-    }
+      if(galaxyActive) drawGalaxyAura(lola.x,lola.y,lola.walk);
+      else if(goldenActive) drawGoldenAura(lola.x,lola.y,lola.walk);
+      else drawPixelChicken(lola.x,lola.y,4,lola.walk);
     }
   }
+
+  // confeti
+  confetti.forEach(c=>{
+    ctx.fillStyle=c.c;
+    ctx.fillRect(c.x,c.y,6,10);
+  });
 }
 
 function drawHUD(){
   const cfg = levelData[level-1];
-  const prevTarget = level === 1 ? 0 : levelData[level-2].targetScore;
-  const progress = Math.min(1, (score - prevTarget) / (cfg.targetScore - prevTarget));
+  const prevTarget = level===1 ? 0 : levelData[level-2].targetScore;
+  const progress = Math.min(1,(score-prevTarget)/(cfg.targetScore-prevTarget));
 
-  // Panel superior especial iPhone vertical
   ctx.fillStyle="rgba(255,255,255,.94)";
-  ctx.fillRect(10,18,W-20,124);
+  ctx.fillRect(10,18,W-20,132);
   ctx.strokeStyle="#2b5f2b";
   ctx.lineWidth=3;
-  ctx.strokeRect(10,18,W-20,124);
+  ctx.strokeRect(10,18,W-20,132);
 
   ctx.fillStyle="#222";
   ctx.font="bold 17px monospace";
@@ -841,55 +783,56 @@ function drawHUD(){
   ctx.fillText("Pts: "+score,260,48);
   ctx.fillText("❤ "+lives,380,48);
 
-  ctx.font="bold 14px monospace";
-  ctx.fillText("⭐=5   ❤️=3   🌽=1   🥚=invencible",24,76);
+  ctx.font="bold 13px monospace";
+  ctx.fillText("⭐=5 ❤️=3 🌽=1 🍓=vida 🥚=oro 🌌=5s",24,76);
 
   ctx.font="12px monospace";
   ctx.fillText("Evita enemigos. Dorada los vence +2.",24,100);
-
-  // Barra de avance
-  ctx.fillStyle="#222";
-  ctx.font="bold 12px monospace";
-  ctx.fillText("Meta: "+cfg.targetScore+" pts",24,124);
+  ctx.fillText("Monedas acumuladas: "+coins+" 🪙",24,124);
 
   ctx.fillStyle="#ddd";
-  ctx.fillRect(150,112,290,16);
+  ctx.fillRect(210,112,230,16);
   ctx.fillStyle="#55c85a";
-  ctx.fillRect(150,112,290*progress,16);
+  ctx.fillRect(210,112,230*progress,16);
   ctx.strokeStyle="#222";
   ctx.lineWidth=2;
-  ctx.strokeRect(150,112,290,16);
+  ctx.strokeRect(210,112,230,16);
 
   if(goldenActive){
     ctx.fillStyle="#b8860b";
     ctx.font="bold 13px monospace";
-    ctx.fillText("✨ Súper Lola: "+Math.ceil(goldenTimer/60)+"s",24,140);
+    ctx.fillText("✨ Súper Lola: "+Math.ceil(goldenTimer/60)+"s",24,144);
+  }
+  if(galaxyActive){
+    ctx.fillStyle="#4c1d95";
+    ctx.font="bold 13px monospace";
+    ctx.fillText("🌌 Lola Galaxia: "+Math.ceil(galaxyTimer/60)+"s",24,144);
   }
 
   if(messageTimer>0){
     ctx.fillStyle="rgba(0,0,0,.62)";
-    ctx.fillRect(24,160,W-48,62);
+    ctx.fillRect(24,170,W-48,62);
     ctx.fillStyle="#fff";
     ctx.textAlign="center";
     ctx.font="bold 18px monospace";
-    ctx.fillText(message,W/2,198);
+    ctx.fillText(message,W/2,208);
     ctx.textAlign="left";
   }
 }
 
 function drawMenu(){
-  ctx.fillStyle="#91e7ff";
+  const cfg = levelData[0];
+  ctx.fillStyle=cfg.bg;
   ctx.fillRect(0,0,W,H);
 
-  ctx.fillStyle="#57b85c";
+  ctx.fillStyle=cfg.hill;
   ctx.beginPath();
   ctx.ellipse(110,520,180,130,0,0,Math.PI*2);
   ctx.ellipse(340,535,190,140,0,0,Math.PI*2);
   ctx.fill();
 
-  ctx.fillStyle="#75cf5b";
+  ctx.fillStyle=cfg.grass;
   ctx.fillRect(0,groundY,W,H-groundY);
-
   ctx.fillStyle="#d9b879";
   ctx.fillRect(0,groundY+52,W,88);
 
@@ -897,12 +840,22 @@ function drawMenu(){
 
   ctx.fillStyle="#222";
   ctx.textAlign="center";
-  ctx.font="bold 26px monospace";
-  ctx.fillText("Kylie y Lola",W/2,94);
+  ctx.font="bold 28px monospace";
+  ctx.fillText("Kylie y Lola",W/2,82);
 
   ctx.font="16px monospace";
-  ctx.fillText("Junta premios y pasa niveles",W/2,126);
-  ctx.fillText("Diseñado para iPhone vertical",W/2,150);
+  ctx.fillText("La gallinita corredora",W/2,114);
+  ctx.fillText("Junta premios y pasa niveles",W/2,140);
+
+  ctx.fillStyle="rgba(255,255,255,.88)";
+  ctx.fillRect(42,170,396,72);
+  ctx.strokeStyle="#2b5f2b";
+  ctx.lineWidth=3;
+  ctx.strokeRect(42,170,396,72);
+  ctx.fillStyle="#222";
+  ctx.font="bold 14px monospace";
+  ctx.fillText("⭐=5  ❤️=3  🌽=1  🍓=vida",W/2,200);
+  ctx.fillText("🥚 oro = poder | 🌌 galaxia = 5s",W/2,224);
 
   ctx.fillStyle="#fff7b2";
   ctx.fillRect(W/2-120,620,240,68);
@@ -915,11 +868,12 @@ function drawMenu(){
   ctx.fillText("JUGAR",W/2,664);
 
   ctx.font="14px monospace";
-  ctx.fillText("Botón SALTAR para jugar",W/2,735);
+  ctx.fillText("Monedas: "+coins+" 🪙",W/2,720);
+  ctx.fillText("Botón SALTAR para jugar",W/2,744);
   ctx.textAlign="left";
 }
 
-function drawEnd(title, subtitle){
+function drawEnd(title,subtitle){
   drawWorld();
   ctx.fillStyle="rgba(0,0,0,.62)";
   ctx.fillRect(0,0,W,H);
@@ -927,44 +881,33 @@ function drawEnd(title, subtitle){
   ctx.textAlign="center";
   ctx.fillStyle="#fff";
   ctx.font="bold 34px monospace";
-  ctx.fillText(title,W/2,H/2-70);
+  ctx.fillText(title,W/2,H/2-75);
 
   ctx.font="18px monospace";
-  ctx.fillText(subtitle,W/2,H/2-28);
+  ctx.fillText(subtitle,W/2,H/2-34);
+  ctx.fillText("Monedas: "+coins+" 🪙",W/2,H/2-8);
 
   ctx.fillStyle="#fff7b2";
-  ctx.fillRect(W/2-150,H/2+25,300,72);
+  ctx.fillRect(W/2-150,H/2+35,300,72);
   ctx.strokeStyle="#222";
   ctx.lineWidth=4;
-  ctx.strokeRect(W/2-150,H/2+25,300,72);
+  ctx.strokeRect(W/2-150,H/2+35,300,72);
 
   ctx.fillStyle="#222";
   ctx.font="bold 22px monospace";
-  ctx.fillText("JUGAR DE NUEVO",W/2,H/2+70);
+  ctx.fillText("JUGAR DE NUEVO",W/2,H/2+80);
   ctx.textAlign="left";
 }
 
 function draw(){
   ctx.clearRect(0,0,W,H);
 
-  if(state==="menu"){
-    drawMenu();
-    return;
-  }
-
+  if(state==="menu"){drawMenu(); return;}
   drawWorld();
 
-  if(state==="play"){
-    drawHUD();
-  }
-
-  if(state==="gameover"){
-    drawEnd("GAME OVER", "Puntos: " + score);
-  }
-
-  if(state==="win"){
-    drawEnd("¡GANASTE!", "Kylie ayudó a Lola. Puntos: " + score);
-  }
+  if(state==="play") drawHUD();
+  if(state==="gameover") drawEnd("GAME OVER","Puntos: "+score);
+  if(state==="win") drawEnd("¡GANASTE!","¡Lola y Kylie lo lograron!");
 }
 
 function loop(){
@@ -973,21 +916,28 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-function checkButtonClick(clientX,clientY){
+function checkClick(clientX,clientY){
   const r = canvas.getBoundingClientRect();
   const x = (clientX-r.left)*W/r.width;
   const y = (clientY-r.top)*H/r.height;
 
   if(state==="menu"){
-    if(x>W/2-170 && x<W/2+170 && y>H-165 && y<H-50) resetGame();
+    if(x>W/2-135 && x<W/2+135 && y>600 && y<710) resetGame();
+    else jump();
   }else if(state==="gameover" || state==="win"){
-    if(x>W/2-190 && x<W/2+190 && y>H/2+25 && y<H/2+135) resetGame();
+    if(x>W/2-165 && x<W/2+165 && y>H/2+20 && y<H/2+125) resetGame();
   }else{
     jump();
   }
 }
 
-window.addEventListener("keydown", e=>{
+canvas.addEventListener("click",e=>checkClick(e.clientX,e.clientY));
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  checkClick(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
+
+window.addEventListener("keydown",e=>{
   if(e.code==="Space" || e.key==="ArrowUp"){
     e.preventDefault();
     jump();
@@ -995,33 +945,25 @@ window.addEventListener("keydown", e=>{
   if(e.key==="Enter" && state==="menu") resetGame();
 });
 
-canvas.addEventListener("click", e=>checkButtonClick(e.clientX,e.clientY));
-canvas.addEventListener("touchstart", e=>{
-  e.preventDefault();
-  checkButtonClick(e.touches[0].clientX,e.touches[0].clientY);
-},{passive:false});
+document.getElementById("jumpBtn").addEventListener("click",e=>{e.preventDefault();jump();});
+document.getElementById("jumpBtn").addEventListener("touchstart",e=>{e.preventDefault();jump();},{passive:false});
 
-const muteBtn = document.getElementById("muteBtn");
-muteBtn.addEventListener("click", ()=>{
+document.getElementById("muteBtn").addEventListener("click",()=>{
   musicMuted = !musicMuted;
-  muteBtn.textContent = musicMuted ? "🔇 Silencio" : "🔊 Música";
-  if(musicMuted){
-    stopAllMusic();
-  }else if(state==="play"){
-    if(goldenActive) playHeroMusic();
+  document.getElementById("muteBtn").textContent = musicMuted ? "🔇 Silencio" : "🔊 Música";
+  if(musicMuted) stopAllMusic();
+  else if(state==="play"){
+    if(goldenActive || galaxyActive) playHeroMusic();
     else playBgMusic();
   }
 });
 
-const jumpBtn = document.getElementById("jumpBtn");
-jumpBtn.addEventListener("touchstart", e=>{e.preventDefault(); jump();},{passive:false});
-jumpBtn.addEventListener("mousedown", e=>{e.preventDefault(); jump();});
-
 resetLola();
+obstacles=[]; prizes=[]; enemies=[]; clouds=[]; hills=[]; flowers=[];
+for(let i=0;i<7;i++) clouds.push({x:rand(0,W),y:rand(75,230),s:rand(.7,1.3),dx:rand(.18,.4)});
+for(let i=0;i<5;i++) hills.push({x:i*145,y:groundY-80-rand(0,55),w:220,h:100});
+for(let i=0;i<25;i++) flowers.push({x:rand(0,W),y:rand(groundY+20,H-35),c:["#ff75a0","#ffe066","#a78bfa","#fff"][i%4]});
 loop();
 </script>
-
-<audio id="bgMusic" loop></audio>
-<audio id="heroMusic" loop></audio>
 </body>
 </html>
