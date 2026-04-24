@@ -73,6 +73,8 @@ let level = 1;
 let score = 0;
 let coins = Number(localStorage.getItem("kylie_lola_coins") || 0);
 let lives = 3;
+let extraLivesGained = 0;
+let livesLost = 0;
 let frame = 0;
 let speed = 2.1;
 let message = "";
@@ -237,6 +239,8 @@ function startLevel(n){
 function resetGame(){
   score = 0;
   lives = 3;
+  extraLivesGained = 0;
+  livesLost = 0;
   confetti = [];
   startLevel(1);
 }
@@ -306,6 +310,8 @@ function spawnThings(){
 function hitLife(){
   if(lola.inv>0 || goldenActive || galaxyActive) return;
   lives--;
+  livesLost++;
+  floatingTexts.push({x:lola.x+20,y:lola.y-10,text:"-1 vida",life:70});
   lola.inv = 95;
   message = "¡Cuidado Lola!";
   messageTimer = 70;
@@ -406,9 +412,17 @@ function update(){
       else if(p.type==="galaxy") gained=0;
 
       if(p.type==="berry"){
-        lives = Math.min(5, lives+1);
-        floatingTexts.push({x:p.x,y:p.y,text:"+1 vida",life:70});
-        message = "🍓 ¡Vida extra Kylie!";
+        if(lives < 5){
+          lives++;
+          extraLivesGained++;
+          floatingTexts.push({x:p.x,y:p.y,text:"+1 vida",life:70});
+        }else{
+          score += 2;
+          coins += 2;
+          localStorage.setItem("kylie_lola_coins", coins);
+          floatingTexts.push({x:p.x,y:p.y,text:"+2 pts",life:70});
+        }
+        message = lives >= 5 ? "🍓 Vidas llenas: +2 puntos" : "🍓 ¡Vida extra Kylie!";
         messageTimer = 80;
       }else if(p.type==="gold"){
         goldenActive = true;
